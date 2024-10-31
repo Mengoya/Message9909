@@ -8,6 +8,8 @@ import android.text.style.UnderlineSpan
 import android.util.Log
 import android.view.Gravity
 import android.view.View
+import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -78,6 +80,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+
         messageInput = findViewById(R.id.messageInput)
         sendButton = findViewById(R.id.sendButton)
         messagesLayout = findViewById(R.id.messagesLayout)
@@ -114,6 +118,13 @@ class MainActivity : AppCompatActivity() {
                     makeApiRequest(messageText)
                 }
             }
+        }
+    }
+
+    private fun hideKeyboard() {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        currentFocus?.let {
+            imm.hideSoftInputFromWindow(it.windowToken, 0)
         }
     }
 
