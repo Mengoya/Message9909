@@ -206,7 +206,9 @@ class MainActivity : AppCompatActivity() {
                         val formattedMessage = buildString {
                             append("ONAY! ALA\n")
                             append("AT ${getCurrentDateTime()}\n")
-                            append("${terminal.route},${terminal.conductor},${terminal.cost?.div(100)}₸\n")
+                            // Safely handle the conductor value and remove the numbers in parentheses
+                            val cleanedConductor = terminal.conductor?.replace("""^\(\d+\)""".toRegex(), "") ?: ""
+                            append("${terminal.route},${cleanedConductor},${terminal.cost?.div(100)}₸\n")
                             append("http://qr.tha.kz/${generateQrCode()}")
                         }
                         addMessage(formattedMessage, false)
