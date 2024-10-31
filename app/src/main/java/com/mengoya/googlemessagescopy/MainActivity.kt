@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
                     .addHeader("accept-language", "ru-Ru")
-                    .addHeader("x-short-token", "67cc5181-6d39-49c8-9b0d-0fac3ff203be")
+                    .addHeader("x-short-token", "8a4aa42d-9aac-4f4b-bf59-964acea901d3")
                     .addHeader("x-ma-os", "1")
                     .addHeader("x-ma-version", "2.12.1")
                     .addHeader("x-ma-factory", "samsung")
@@ -129,7 +129,7 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 val request = TransactionRequest(
-                    pan = "9643908503316089865",
+                    pan = "9398101000016299155",
                     terminal = terminalId
                 )
                 val response = withContext(Dispatchers.IO) {
