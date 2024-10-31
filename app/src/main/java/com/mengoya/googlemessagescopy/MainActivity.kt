@@ -1,5 +1,6 @@
 package com.mengoya.googlemessagescopy
 
+import android.content.Context
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spannable
@@ -13,6 +14,8 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,15 +28,22 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+data class Message(
+    val text: String,
+    val isSent: Boolean,
+    val timestamp: Long
+)
+
 class MainActivity : AppCompatActivity() {
     private val TAG = "MainActivity"
+    private val PREFS_NAME = "ChatMessages"
+    private val MESSAGE_KEY = "messages"
 
     private lateinit var messageInput: EditText
     private lateinit var sendButton: ImageButton
     private lateinit var messagesLayout: LinearLayout
     private lateinit var messagesScroller: ScrollView
 
-    // Добавляем переменные для работы с временем
     private var lastMessageTime: Long = 0
     private val dateFormatter = SimpleDateFormat("EE, d MMMM, HH:mm", Locale("ru"))
     private val timeOnly = SimpleDateFormat("HH:mm", Locale("ru"))
@@ -72,18 +82,31 @@ class MainActivity : AppCompatActivity() {
         messagesLayout = findViewById(R.id.messagesLayout)
         messagesScroller = findViewById(R.id.messagesScroller)
 
-        // Добавляем дефолтные сообщения с временными метками
-        val defaultTime1 = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-            .parse("30/10/2024 18:04")?.time ?: System.currentTimeMillis()
-        addMessage("154887", true, defaultTime1)
+        // Очищаем существующий layout перед загрузкой сообщений
+        messagesLayout.removeAllViews()
 
-        val defaultTime2 = defaultTime1 + 1000 // 1 секунда позже
-        addMessage("ONAY! ALA\nAT 30/10 18:04\n57,113AJ02,120₸\nhttp://qr.tha.kz/7F597", false, defaultTime2)
+        // Загружаем сохраненные сообщения
+        val messages = loadMessages()
+        if (messages.isEmpty()) {
+            // Если сообщений нет, добавляем дефолтные
+            val defaultTime1 = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                .parse("30/10/2024 18:04")?.time ?: System.currentTimeMillis()
+
+            addMessage("154887", true, defaultTime1)
+
+            val defaultTime2 = defaultTime1 + 1000
+            addMessage("ONAY! ALA\nAT 30/10 18:04\n57,113AJ02,120₸\nhttp://qr.tha.kz/7F597", false, defaultTime2)
+        } else {
+            // Отображаем сохраненные сообщения
+            messages.forEach { message ->
+                displayMessage(message)
+            }
+        }
 
         sendButton.setOnClickListener {
             val messageText = messageInput.text.toString().trim()
             if (messageText.isNotEmpty()) {
-                addMessage(messageText, true, System.currentTimeMillis())
+                addMessage(messageText, true)
                 messageInput.text.clear()
 
                 if (messageText.all { it.isDigit() }) {
@@ -93,11 +116,41 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private data class SavedMessage(
+        val text: String,
+        val isSent: Boolean,
+        val timestamp: Long
+    )
+
+    private fun saveMessages(messages: List<SavedMessage>) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val messagesJson = Gson().toJson(messages)
+        prefs.edit().putString(MESSAGE_KEY, messagesJson).apply()
+    }
+
+    private fun loadMessages(): List<SavedMessage> {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val messagesJson = prefs.getString(MESSAGE_KEY, null) ?: return emptyList()
+        return try {
+            Gson().fromJson(messagesJson, object : TypeToken<List<SavedMessage>>() {}.type)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading messages", e)
+            emptyList()
+        }
+    }
+
+    private fun displaySavedMessages() {
+        val messages = loadMessages()
+        messages.forEach { message ->
+            addMessage(message.text, message.isSent, message.timestamp)
+        }
+    }
+
     private fun addTimeHeader(timestamp: Long) {
         val currentTime = timestamp
         val showFullHeader = lastMessageTime == 0L ||
                 !isSameDay(Date(lastMessageTime), Date(currentTime)) ||
-                (currentTime - lastMessageTime) > 3600000 // 1 час в миллисекундах
+                (currentTime - lastMessageTime) > 3600000
 
         if (showFullHeader) {
             val headerView = TextView(this).apply {
@@ -170,18 +223,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun addMessage(message: String, isSent: Boolean, timestamp: Long = System.currentTimeMillis()) {
-        addTimeHeader(timestamp)
+    private fun addMessage(text: String, isSent: Boolean, timestamp: Long = System.currentTimeMillis()) {
+        // Сохраняем новое сообщение
+        val messages = loadMessages().toMutableList()
+        messages.add(SavedMessage(text, isSent, timestamp))
+        saveMessages(messages)
+
+        // Отображаем сообщение
+        displayMessage(SavedMessage(text, isSent, timestamp))
+    }
+
+    private fun displayMessage(message: SavedMessage) {
+        addTimeHeader(message.timestamp)
 
         val newMessage = TextView(this).apply {
-            if (isSent && message.all { it.isDigit() }) {
+            if (message.isSent && message.text.all { it.isDigit() }) {
                 paintFlags = paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
-                text = message
-            } else if (!isSent) {
-                val spannableString = SpannableString(message)
+                text = message.text
+            } else if (!message.isSent) {
+                val spannableString = SpannableString(message.text)
 
                 val timePattern = "\\d{2}:\\d{2}".toRegex()
-                timePattern.find(message)?.let { matchResult ->
+                timePattern.find(message.text)?.let { matchResult ->
                     spannableString.setSpan(
                         UnderlineSpan(),
                         matchResult.range.first,
@@ -191,7 +254,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val urlPattern = "http://qr\\.tha\\.kz/[A-Z0-9]+".toRegex()
-                urlPattern.find(message)?.let { matchResult ->
+                urlPattern.find(message.text)?.let { matchResult ->
                     spannableString.setSpan(
                         UnderlineSpan(),
                         matchResult.range.first,
@@ -202,11 +265,11 @@ class MainActivity : AppCompatActivity() {
 
                 text = spannableString
             } else {
-                text = message
+                text = message.text
             }
 
             textSize = 18f
-            if (!isSent) {
+            if (!message.isSent) {
                 setLineSpacing(0f, 1.2f)
             }
 
@@ -218,7 +281,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             background = resources.getDrawable(
-                if (isSent) R.drawable.message_sent_background
+                if (message.isSent) R.drawable.message_sent_background
                 else R.drawable.message_received_background,
                 null
             )
@@ -233,7 +296,7 @@ class MainActivity : AppCompatActivity() {
 
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = if (isSent) Gravity.END else Gravity.START
+            gravity = if (message.isSent) Gravity.END else Gravity.START
             layoutParams = containerParams
             addView(newMessage)
         }
