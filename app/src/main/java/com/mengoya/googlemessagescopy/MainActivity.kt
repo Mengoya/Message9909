@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -233,6 +234,34 @@ class MainActivity : AppCompatActivity() {
         displayMessage(SavedMessage(text, isSent, timestamp))
     }
 
+    private fun deleteMessage(message: SavedMessage) {
+        // Удаляем сообщение из сохраненного списка
+        val messages = loadMessages().toMutableList()
+        messages.removeAll { it.timestamp == message.timestamp && it.text == message.text }
+        saveMessages(messages)
+
+        // Перерисовываем все сообщения
+        messagesLayout.removeAllViews()
+        messages.forEach { displayMessage(it) }
+    }
+
+    private fun showPopupMenu(view: View, message: SavedMessage) {
+        val popup = PopupMenu(this, view)
+        popup.menu.add("Удалить сообщение")
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.title) {
+                "Удалить сообщение" -> {
+                    deleteMessage(message)
+                    true
+                }
+                else -> false
+            }
+        }
+
+        popup.show()
+    }
+
     private fun displayMessage(message: SavedMessage) {
         addTimeHeader(message.timestamp)
 
@@ -285,6 +314,11 @@ class MainActivity : AppCompatActivity() {
                 else R.drawable.message_received_background,
                 null
             )
+
+            setOnLongClickListener { view ->
+                showPopupMenu(view, message)
+                true
+            }
         }
 
         val containerParams = LinearLayout.LayoutParams(
@@ -305,5 +339,6 @@ class MainActivity : AppCompatActivity() {
         messagesScroller.post {
             messagesScroller.fullScroll(View.FOCUS_DOWN)
         }
+
     }
 }
