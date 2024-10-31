@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Google Messages</string>
+    <string name="clear_chat">Очистить чат</string>
+    <string name="restore_default">Вернуть дефолтные сообщения</string>
+</resources>
