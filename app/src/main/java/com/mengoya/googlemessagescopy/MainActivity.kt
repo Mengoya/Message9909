@@ -201,7 +201,7 @@ class MainActivity : AppCompatActivity() {
                         addMessage(formattedMessage, false)
                     }
                 } else {
-                    addMessage(response.message, false)
+                    addMessage("Ошибка. Услуга временно недоступна, попробуйте позже.", false)
                 }
             } catch (e: Exception) {
                 addMessage("Ошибка при выполнении запроса: ${e.message}", false)
@@ -265,6 +265,10 @@ class MainActivity : AppCompatActivity() {
     private fun displayMessage(message: SavedMessage) {
         addTimeHeader(message.timestamp)
 
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val messageMaxWidth = (screenWidth * 0.8).toInt()
+
         val newMessage = TextView(this).apply {
             if (message.isSent && message.text.all { it.isDigit() }) {
                 paintFlags = paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
@@ -301,6 +305,8 @@ class MainActivity : AppCompatActivity() {
             if (!message.isSent) {
                 setLineSpacing(0f, 1.2f)
             }
+
+            maxWidth = messageMaxWidth
 
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
